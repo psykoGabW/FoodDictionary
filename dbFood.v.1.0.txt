@@ -1,0 +1,2 @@
+Fish & Chips;English food;450;25;35;45
+Sausage & Chips;English food;1200;35;35;55

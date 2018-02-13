@@ -7,6 +7,8 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Scanner;
 
+import javax.swing.plaf.synth.SynthSpinnerUI;
+
 public class FoodDictionary {
 
 	public final static String DEFAULT_DICTIONARY_FILE = "dbFood.txt";
@@ -14,6 +16,7 @@ public class FoodDictionary {
 	public final static String SEPARATOR = ";";
 
 	private final static int NB_OF_ATTRIBUTES = 6;
+	private final static int MAX_NB_OF_SAVING_TRIES = 3;
 
 	public final static String[] ATTRIBUTE_NAMES = { "Name", "Category", "Energetic value (kcal)",
 			"Protein rate (g/100g)", "Glucid rate (g/100g)", "Lipid rate (g/100g)" };
@@ -24,47 +27,79 @@ public class FoodDictionary {
 
 	private static Scanner scanner = new Scanner(System.in);
 
+	/**
+	 * 
+	 * @param fileName
+	 *            name of the file containing database records
+	 * @throws FileNotFoundException
+	 */
+	private static boolean loadDatabase(String fileName) {
 
+		boolean isLoadingOk = true;
 
-	private static void loadDatabase() throws FileNotFoundException {
-				
 		Scanner fileScanner;
 
-		fileScanner = new Scanner(new File(DEFAULT_DICTIONARY_FILE), "UTF-8");
-		
-		foodDictionary.clear();
+		try {
+			fileScanner = new Scanner(new File(fileName), "UTF-8");
 
-		while (fileScanner.hasNextLine()) {
-			foodDictionary.add(fileScanner.nextLine().split(SEPARATOR, -1));
+			foodDictionary.clear();
+
+			while (fileScanner.hasNextLine()) {
+				foodDictionary.add(fileScanner.nextLine().split(SEPARATOR, -1));
+			}
+			fileScanner.close();
+		} catch (FileNotFoundException f) {
+			System.out.println(f.getMessage());
+			isLoadingOk = false;
+		} finally {
+			isDictionaryModified = !isLoadingOk;
 		}
-		fileScanner.close();
+
+		return isLoadingOk;
 	}
 
-	private static void saveDataBase() throws IOException {
+	/**
+	 * 
+	 * @param fileName
+	 *            name of the file in which we will save records of food
+	 * @throws IOException
+	 */
+	private static boolean saveDataBase(String fileName) {
 
+		boolean isDbSaved = true;
 		// Backup of database only if database is modified
 		if (!isDictionaryModified) {
-			return;
+			return true;
 		}
 
-		BufferedWriter writer = new BufferedWriter(new FileWriter(DEFAULT_DICTIONARY_FILE, false));
+		BufferedWriter writer;
+		try {
+			writer = new BufferedWriter(new FileWriter(fileName, false));
 
-		Iterator<String[]> itFood = foodDictionary.iterator();
+			Iterator<String[]> itFood = foodDictionary.iterator();
 
-		while (itFood.hasNext()) {
-			String[] foodRecords = itFood.next();
-			String lineToWrite = "";
+			while (itFood.hasNext()) {
+				String[] foodRecords = itFood.next();
+				String lineToWrite = "";
 
-			for (int i = 0; i < foodRecords.length; i++) {
-				lineToWrite += foodRecords[i] + (i < foodRecords.length - 1 ? SEPARATOR : "");
+				for (int i = 0; i < foodRecords.length; i++) {
+					lineToWrite += foodRecords[i] + (i < foodRecords.length - 1 ? SEPARATOR : "");
+				}
+
+				writer.write(lineToWrite);
+				writer.newLine();
+
 			}
-			writer.write(lineToWrite);
-			writer.newLine();
+			writer.close();
+		} catch (IOException e) {
+			// Unable to initialize FileWriter
+			System.out.println("Issue during database saving : " + e.getMessage());
+			isDbSaved = false;
 		}
 
-		writer.close();
-		isDictionaryModified = false;
+		isDictionaryModified = !isDbSaved;
 
+		return isDbSaved;
 	}
 
 	public static void printFood(String[] food) {
@@ -87,9 +122,10 @@ public class FoodDictionary {
 
 			while (itFoodDictionary.hasNext()) {
 				printFood(itFoodDictionary.next());
-				System.out.println();
 			}
 		}
+		System.out.println();
+
 	}
 
 	public static void addFoodToDataBase() {
@@ -108,23 +144,21 @@ public class FoodDictionary {
 
 	public static void removeFoodFromDatabase() {
 
-		String menuChoice = "";
+		int menuChoice = -1;
 		System.out.println("Select food to delete (Enter to exit): ");
 
 		for (int i = 0; i < foodDictionary.size(); i++) {
 			System.out.println("[" + i + "] " + foodDictionary.get(i)[0]);
 		}
 
-		menuChoice = scanner.nextLine();
+		// menuChoice = scanner.nextLine();
+		menuChoice = getUserChoice(0, foodDictionary.size(), true);
 
-		if (!menuChoice.equals("")) {
-			int iFood = -1;
-			iFood = Integer.parseInt(menuChoice);
+		if (menuChoice != -1) {
+			// value returned by getUserChoice is in foodDictionary array range
 
-			if (iFood >= 0 && iFood < foodDictionary.size()) {
-				foodDictionary.remove(iFood);
-				isDictionaryModified = true;
-			}
+			foodDictionary.remove(menuChoice);
+			isDictionaryModified = true;
 
 		}
 
@@ -151,7 +185,7 @@ public class FoodDictionary {
 	}
 
 	public static void searchByAttributeMenu() {
-		String menuChoice;
+		int menuChoice;
 		do {
 			// Affichage du menu dans la console.
 			System.out.println("------------------- Search -------------------");
@@ -160,10 +194,10 @@ public class FoodDictionary {
 			System.out.println("0) Quit");
 			System.out.print("Your choice: ");
 
-			menuChoice = scanner.nextLine();
+			menuChoice = getUserChoice(0, 2);
 
-			if (Integer.parseInt(menuChoice) > 0 && Integer.parseInt(menuChoice) <= 2) {
-				int iAttributeIndex = Integer.parseInt(menuChoice) - 1;
+			if (menuChoice != 0) {
+				int iAttributeIndex = menuChoice - 1;
 
 				System.out.print("Searched value: ");
 
@@ -171,15 +205,8 @@ public class FoodDictionary {
 				System.out.println(String.valueOf(foodResult.size()) + " food found.");
 
 				if (foodResult.size() > 0) {
-					String userResponse;
-					do {
 
-						userResponse = "";
-						System.out.print("Do you want to display search Result (Y/N)? ");
-						userResponse = scanner.nextLine();
-					} while (!(userResponse.equalsIgnoreCase("Y") || userResponse.equalsIgnoreCase("N")));
-
-					if (userResponse.equalsIgnoreCase("Y")) {
+					if (getUserAcceptance("Do you want to display search Result ?")) {
 						Iterator<String[]> itFood = foodResult.iterator();
 						while (itFood.hasNext()) {
 							printFood(itFood.next());
@@ -190,60 +217,204 @@ public class FoodDictionary {
 
 			}
 
-		} while (!menuChoice.equals("0"));
+		} while (menuChoice != 0);
+	}
+
+	/**
+	 * 
+	 * @param currentFileName
+	 * @return
+	 */
+	public static String getDbFileName(String currentFileName) {
+		String newFileName = "";
+
+		System.out.println("------------ Choose database file name ");
+		if (!currentFileName.isEmpty()) {
+			System.out.println("Current file name : " + currentFileName);
+		} else {
+			if (getUserAcceptance("Do you want to use database by default (" + DEFAULT_DICTIONARY_FILE + ")?")) {
+				newFileName = DEFAULT_DICTIONARY_FILE;
+			}
+		}
+
+		if (newFileName.isEmpty()) {
+
+			do {
+				System.out.print("Enter new database file name : ");
+				newFileName = scanner.nextLine().trim();
+				if (newFileName.isEmpty() && !currentFileName.isEmpty()) {
+					newFileName = currentFileName;
+				}
+
+			} while (newFileName.isEmpty());
+
+		}
+		return newFileName;
+
+	}
+
+	private static int getUserChoice(int minAcceptedValue, int maxAcceptedValue) {
+		return getUserChoice(minAcceptedValue, maxAcceptedValue, false);
+	}
+
+	/**
+	 * 
+	 * @param minAcceptedValue
+	 *            (int >= 0)
+	 * @param maxAcceptedValue
+	 *            (int >= 0)
+	 * @param isEmptyAccepted
+	 *            (boolean) if true, user can input nothing and we return -1;
+	 * @return -1 if isEmptyAccepted && user input "" int between minAcceptedValue
+	 *         and maxAcceptedValue
+	 */
+	private static int getUserChoice(int minAcceptedValue, int maxAcceptedValue, boolean isEmptyAccepted) {
+		int userChoice = -1;
+		String literalChoice = "";
+		// get User choice
+		do {
+			try {
+				System.out.println("Your choice : ");
+				literalChoice = scanner.nextLine();
+				userChoice = Integer.parseInt(literalChoice);
+			} catch (NumberFormatException n) {
+				userChoice = -1;
+			} finally {
+				if ((!(userChoice >= minAcceptedValue && userChoice <= maxAcceptedValue))
+						|| (literalChoice.isEmpty() && !isEmptyAccepted)) {
+					System.out.println(
+							"Please enter a number in [ " + minAcceptedValue + " ; " + maxAcceptedValue + " ]");
+				}
+			}
+		} while (userChoice == -1 || (isEmptyAccepted && literalChoice.isEmpty()));
+
+		if (literalChoice.isEmpty() && isEmptyAccepted) {
+			userChoice = -1;
+		}
+		return userChoice;
+
+	}
+
+	/**
+	 * 
+	 * @param questionToAsk
+	 *            Answer has to be Yes(Y) or No(N)
+	 * @return true if user accept (userChoice == Y) false if user deny (userChoice
+	 *         == N)
+	 */
+	private static boolean getUserAcceptance(String questionToAsk) {
+
+		System.out.println(questionToAsk);
+		String userChoice;
+		do {
+			System.out.print("Your choice (Y/N) :");
+			userChoice = scanner.nextLine().toUpperCase();
+		} while (!userChoice.equals("Y") && !userChoice.equals("N"));
+
+		return (userChoice.equals("Y"));
 	}
 
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
 
-		// File Loading....
-		try {
-			loadDatabase();
-		} catch (FileNotFoundException e) {
-			// No specific error.
-
-		}
+		String fileName = "";
 
 		// Main Menu
-		String menuChoice;
+		int menuChoice = -1;
 		do {
-			// Affichage du menu dans la console.
+			// Main menu
 			System.out.println("------------------- Menu -------------------");
-			System.out.println("1) List food database");
+			System.out.println("1) Food list " + (isDictionaryModified ? "<not saved>" : ""));
 			System.out.println("2) Add food");
 			System.out.println("3) Delete food");
 			System.out.println("4) Search by attribute");
 			System.out.println();
-
+			System.out.println("5) Load food list from file");
+			System.out.println("6) Change database file name");
+			System.out.println("7) Save food list");
+			System.out.println();
 			System.out.println("0) Quit");
 
 			// get User choice
-			menuChoice = scanner.nextLine();
+
+			menuChoice = getUserChoice(0, 7);
 			switch (menuChoice) {
-			case "1":
+			case 1:
 				printFoodDictionary();
 				break;
-			case "2":
+			case 2:
 				addFoodToDataBase();
 				break;
-			case "3":
+			case 3:
 				removeFoodFromDatabase();
 				break;
-			case "4":
+			case 4:
 				searchByAttributeMenu();
-			case "0":
-				// Check of dictionary state to write database if needed
+				break;
+			case 5:
 				if (isDictionaryModified) {
-					try {
-						saveDataBase();
-					} catch (IOException e) {						
-						e.printStackTrace();
+					System.out.println("<WARNING> Current list has been modified since last save !!! ");
+					System.out.println("Current food list will be replace by file content...");
+					if (!getUserAcceptance("Do you want to continue anyway?")) {
+						menuChoice = -1;
+						break;
+					}
+				}
+				if (fileName.isEmpty()) {
+					fileName = getDbFileName("");
+				}
+				if (!loadDatabase(fileName)) {
+					System.out.println("An error occured during database loading... Please check database " + fileName);
+				}
+				break;
+			case 6:
+				fileName = getDbFileName(fileName);
+				isDictionaryModified = true;
+				break;
+			case 0:
+				if (!isDictionaryModified) {
+					break;
+				} else {
+					System.out.println("<WARNING> Current list has been modified since last save !!! ");
+					if (!getUserAcceptance("Do you want to quit without saving anyway?")) {
+						menuChoice = -1;
+						break;
+					}
+				}
+
+			case 7:
+				// Check of dictionary state to write database if needed
+				if (fileName.isEmpty()) {
+					fileName = getDbFileName(fileName);
+				}
+				boolean isSavingAborted = false;
+				int tryCount = MAX_NB_OF_SAVING_TRIES;
+				while (isDictionaryModified && !isSavingAborted && tryCount > 0) {
+
+					if (!saveDataBase(fileName)) {
+						System.out.println("Saving of " + fileName + " failed!");
+						System.out.println("What do you want to do ? ");
+						System.out.println("1) Retry saving " + fileName + " " + tryCount + "try lefts");
+						System.out.println("2) Change file name and save again");
+						System.out.println("0) Quit (Warning !! Data may be lost");
+
+						switch (getUserChoice(0, 2)) {
+						case 1:
+							tryCount--;
+							break;
+						case 2:
+							fileName = getDbFileName(fileName);
+							tryCount = MAX_NB_OF_SAVING_TRIES;
+							break;
+						case 0:
+							isSavingAborted = true;
+						}
 					}
 				}
 			default:
 				break;
 			}
-		} while (!menuChoice.equals("0"));
+		} while (menuChoice != 0);
 
 		// Scanner closure... Mandatory
 		scanner.close();
