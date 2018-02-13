@@ -1,18 +1,16 @@
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Scanner;
 
 public class FoodDictionary {
 
-	// public final static String DICTIONARY_FILE = "dbFood.txt";
-	public final static String DICTIONARY_FILE = "aliments.csv";
+	public final static String DEFAULT_DICTIONARY_FILE = "dbFood.txt";
+	// public final static String DEFAULT_DICTIONARY_FILE = "aliments.csv";
 	public final static String SEPARATOR = ";";
 
 	private final static int NB_OF_ATTRIBUTES = 6;
@@ -26,21 +24,16 @@ public class FoodDictionary {
 
 	private static Scanner scanner = new Scanner(System.in);
 
-	private static void loadDatabase() throws FileNotFoundException {
 
-		String fileEncoding = "UTF-8";
-		/*
-		InputStreamReader r = new InputStreamReader(new FileInputStream(DICTIONARY_FILE));
-		String fileEncoding = r.getEncoding();	
+
+	private static void loadDatabase() throws FileNotFoundException {
 				
-		try{
-			r.close();
-		}catch(IOException e) {
-			
-		}*/
+		Scanner fileScanner;
+
+		fileScanner = new Scanner(new File(DEFAULT_DICTIONARY_FILE), "UTF-8");
 		
-		Scanner fileScanner = new Scanner(new File(DICTIONARY_FILE), fileEncoding);
 		foodDictionary.clear();
+
 		while (fileScanner.hasNextLine()) {
 			foodDictionary.add(fileScanner.nextLine().split(SEPARATOR, -1));
 		}
@@ -54,7 +47,7 @@ public class FoodDictionary {
 			return;
 		}
 
-		BufferedWriter writer = new BufferedWriter(new FileWriter(DICTIONARY_FILE, false));
+		BufferedWriter writer = new BufferedWriter(new FileWriter(DEFAULT_DICTIONARY_FILE, false));
 
 		Iterator<String[]> itFood = foodDictionary.iterator();
 
@@ -87,13 +80,6 @@ public class FoodDictionary {
 	public static void printFoodDictionary() {
 
 		if (foodDictionary.isEmpty()) {
-			try {
-				loadDatabase();
-			} catch (FileNotFoundException e) {
-			}
-		}
-
-		if (foodDictionary.isEmpty()) {
 			System.out.println("List is empty");
 		} else {
 
@@ -102,7 +88,6 @@ public class FoodDictionary {
 			while (itFoodDictionary.hasNext()) {
 				printFood(itFoodDictionary.next());
 				System.out.println();
-
 			}
 		}
 	}
@@ -122,7 +107,6 @@ public class FoodDictionary {
 	}
 
 	public static void removeFoodFromDatabase() {
-		Iterator<String[]> itDictionary = foodDictionary.iterator();
 
 		String menuChoice = "";
 		System.out.println("Select food to delete (Enter to exit): ");
@@ -157,8 +141,7 @@ public class FoodDictionary {
 				String[] food = itFood.next();
 
 				// Search on lexical attribute (toUpperCase)
-				if (food[iAttributeIndex].toUpperCase().contains(strSearchedValue.toUpperCase()))
-				{
+				if (food[iAttributeIndex].toUpperCase().contains(strSearchedValue.toUpperCase())) {
 					lstResult.add(food);
 				}
 
@@ -172,49 +155,44 @@ public class FoodDictionary {
 		do {
 			// Affichage du menu dans la console.
 			System.out.println("------------------- Search -------------------");
-			System.out.println("1) By " + ATTRIBUTE_NAMES[0] );
-			System.out.println("2) By " + ATTRIBUTE_NAMES[1] );
+			System.out.println("1) By " + ATTRIBUTE_NAMES[0]);
+			System.out.println("2) By " + ATTRIBUTE_NAMES[1]);
 			System.out.println("0) Quit");
 			System.out.print("Your choice: ");
-			
+
 			menuChoice = scanner.nextLine();
-			
-			if ( Integer.parseInt(menuChoice) >0 && Integer.parseInt(menuChoice)<=2)
-				{
-				int iAttributeIndex = Integer.parseInt(menuChoice)-1;
-				
-				
+
+			if (Integer.parseInt(menuChoice) > 0 && Integer.parseInt(menuChoice) <= 2) {
+				int iAttributeIndex = Integer.parseInt(menuChoice) - 1;
+
 				System.out.print("Searched value: ");
-				String  strSearchedValue = scanner.nextLine();
-				
-				ArrayList<String[]> foodResult = searchByAttribute(iAttributeIndex, strSearchedValue);
-				System.out.println(String.valueOf(foodResult.size())+" food found.");
-				
-				if (foodResult.size()>0)
-				{
+
+				ArrayList<String[]> foodResult = searchByAttribute(iAttributeIndex, scanner.nextLine());
+				System.out.println(String.valueOf(foodResult.size()) + " food found.");
+
+				if (foodResult.size() > 0) {
 					String userResponse;
-					do {						
-						
+					do {
+
 						userResponse = "";
 						System.out.print("Do you want to display search Result (Y/N)? ");
 						userResponse = scanner.nextLine();
 					} while (!(userResponse.equalsIgnoreCase("Y") || userResponse.equalsIgnoreCase("N")));
-					
+
 					if (userResponse.equalsIgnoreCase("Y")) {
 						Iterator<String[]> itFood = foodResult.iterator();
-						while(itFood.hasNext())
-						{
+						while (itFood.hasNext()) {
 							printFood(itFood.next());
 						}
 					}
-					
+
 				}
-				
-				}
-			
-		} while(!menuChoice.equals("0"));
+
+			}
+
+		} while (!menuChoice.equals("0"));
 	}
-	
+
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
 
@@ -239,20 +217,16 @@ public class FoodDictionary {
 
 			System.out.println("0) Quit");
 
-			// Récupération de l'entrée clavier qui sera utilisée pour définir l'action à
-			// faire.
+			// get User choice
 			menuChoice = scanner.nextLine();
 			switch (menuChoice) {
 			case "1":
-				// cas non détaillé pour ne pas surcharger
 				printFoodDictionary();
 				break;
 			case "2":
-				// cas non détaillé pour ne pas surcharger
 				addFoodToDataBase();
 				break;
 			case "3":
-				// cas non détaillé pour ne pas surcharger
 				removeFoodFromDatabase();
 				break;
 			case "4":
@@ -262,8 +236,7 @@ public class FoodDictionary {
 				if (isDictionaryModified) {
 					try {
 						saveDataBase();
-					} catch (IOException e) {
-						// TODO Auto-generated catch block
+					} catch (IOException e) {						
 						e.printStackTrace();
 					}
 				}
@@ -272,8 +245,7 @@ public class FoodDictionary {
 			}
 		} while (!menuChoice.equals("0"));
 
-		// On ferme l'objet scanner car il ne servira plus (obligatoire pour les objets
-		// qui manipulent les Streams).
+		// Scanner closure... Mandatory
 		scanner.close();
 
 	}

@@ -1,1 +1,3 @@
-Patato;Vegetable;120;10;14;15
+Flamby;Dessert;125;01;5;50
+Poisson vapeur;Light food;125;60;5;30
+Cereals;Dessert;125;10;25;50
